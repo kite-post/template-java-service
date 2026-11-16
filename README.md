@@ -6,7 +6,7 @@ CI з одного рядка. Із нього створюються 12 Java-с
 ## Новий сервіс
 
 ```bash
-gh repo create kite-post/shipment-service --private --template kite-post/template-java-service
+gh repo create kite-post/shipment-service --public --template kite-post/template-java-service
 cd shipment-service
 make rename NAME=shipment-service
 git add -A && git commit -m "Перейменувати шаблон у shipment-service" && git push
