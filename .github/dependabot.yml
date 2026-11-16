@@ -8,6 +8,11 @@ updates:
     groups:
       spring:
         patterns: ['org.springframework*']
+    ignore:
+      # 5.1 документації фіксує Spring Boot 3. Перехід на 4.x — рішення
+      # рівня документації, а не окремого сервіса, тож мажор не пропонуємо.
+      - dependency-name: 'org.springframework.boot:spring-boot-starter-parent'
+        update-types: ['version-update:semver-major']
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -16,3 +21,8 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    ignore:
+      # Java 21 — теж із 5.1. Java 25 уже LTS, але стрибок робиться разом
+      # з усіма 12 сервісами, а не поодинці.
+      - dependency-name: 'eclipse-temurin'
+        update-types: ['version-update:semver-major']
