@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── Збірка ────────────────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:25-jdk-alpine AS build
 WORKDIR /build
 
 # Збираємо тим самим Maven, що й локально: версія закріплена обгорткою,
@@ -22,7 +22,7 @@ RUN java -Djarmode=tools -jar target/*.jar extract --layers --destination /extra
     && mv /extracted/application/*.jar /extracted/application/app.jar
 
 # ── Запуск ────────────────────────────────────────────────────────────────────
-FROM eclipse-temurin:21-jre-alpine AS runtime
+FROM eclipse-temurin:25-jre-alpine AS runtime
 
 RUN addgroup -S kite && adduser -S -G kite kite \
     && apk add --no-cache curl
