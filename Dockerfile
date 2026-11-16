@@ -10,10 +10,17 @@ COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
 
 # Залежності окремим шаром: pom змінюється рідше за код, тож кеш живе довше.
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp dependency:go-offline
+# kite-contracts лежить у GitHub Packages, тож збірці потрібен settings.xml із
+# токеном. Він приходить секретом BuildKit і в шарах образу не лишається;
+# кеш підмонтований у repository, щоб не затирати сам файл.
+RUN --mount=type=cache,target=/root/.m2/repository \
+    --mount=type=secret,id=m2settings,target=/root/.m2/settings.xml,required=false \
+    ./mvnw -B -ntp dependency:go-offline
 
 COPY src ./src
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -B -ntp clean package -DskipTests
+RUN --mount=type=cache,target=/root/.m2/repository \
+    --mount=type=secret,id=m2settings,target=/root/.m2/settings.xml,required=false \
+    ./mvnw -B -ntp clean package -DskipTests
 
 # Шарована розкладка Spring Boot: тонкий jar і залежності лягають різними
 # шарами, тож нова збірка штовхає в реєстр лише те, що справді змінилося.

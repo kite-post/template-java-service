@@ -60,13 +60,48 @@ make run        # запустити з Maven, без контейнера
 3. В інтеграційному тесті підняти Postgres контейнером — Testcontainers уже в
    залежностях, приклад є в коментарі `InfoEndpointIT`.
 
-## Коли з'являться події
+## Контракти
 
-Формат — CloudEvents у JSON, схеми живуть у `kite-contracts` і підключаються
-залежністю, закріпленою за тегом, а не копіюються (5.4, п. 6). Разом із цим
-варто розкоментувати ціль `contracts-check` у `Makefile` — спільний CI почне
-проганяти перевірку сумісності автоматично.
+Моделі API, інтерфейси контролерів і класи подій CloudEvents приходять
+залежністю `ua.kite:kite-contracts`, закріпленою за тегом — своїх копій
+`openapi.yaml` і JSON Schema сервіс не тримає (5.4, п. 6):
+
+```xml
+<kite-contracts.version>0.1.0</kite-contracts.version>
+```
+
+```bash
+make contracts        # підтягнути пакет за тегом
+make contracts-check  # версія закріплена, копій схем немає, залежність резолвиться
+```
+
+`contracts-check` проганяє спільний CI. Самі схеми лежать у тому самому jar
+(`/kite/contracts/openapi`, `/kite/contracts/events`), тож валідація події не
+потребує копії файла в репозиторії — так це і перевіряє `ContractsWiringTest`.
+
+Пакет живе в GitHub Packages, а він віддає Maven лише з токеном. У CI
+`settings.xml` розставляє спільний workflow; локально потрібен свій:
+
+```xml
+<!-- ~/.m2/settings.xml -->
+<settings>
+  <servers>
+    <server>
+      <id>github</id>
+      <username>ВАШ-ЛОГІН</username>
+      <password>ghp_… (scope read:packages)</password>
+    </server>
+  </servers>
+</settings>
+```
+
+Порядок наскрізної зміни (5.6): спершу адитивна зміна в `kite-contracts` з
+новим тегом, потім версія тут, і тільки потім продюсер починає слати нове
+поле.
+
+## Коли з'являться події
 
 Писати подію треба в одній транзакції зі зміною, у таблицю `outbox`; окремий
 процес публікує її в Kafka. Споживач тримає `processed_event(event_id)` і
-пропускає повтори.
+пропускає повтори. Класи подій і реєстр топіків уже є в `kite-contracts`:
+`ua.kite.contracts.model.ShipmentStatusChangedEvent`, `KiteEventType`.

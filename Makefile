@@ -7,8 +7,13 @@ IMAGE   ?= ghcr.io/$(ORG)/$(SERVICE)
 TAG     ?= dev
 MVN     := $(if $(wildcard ./mvnw),./mvnw,mvn)
 
+# Тег kite-contracts, за яким закріплений сервіс. Той самий номер лежить у
+# pom.xml властивістю kite-contracts.version; contracts-check стежить, щоб
+# вони не розійшлися.
+CONTRACTS_VERSION ?= 0.1.0
+
 .DEFAULT_GOAL := help
-.PHONY: help build lint fmt test test-it verify image run up down clean contracts rename
+.PHONY: help build lint fmt test test-it verify image run up down clean contracts contracts-check rename
 
 help: ## Показати цілі
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -46,13 +51,13 @@ down: ## Зупинити контейнер
 clean: ## Прибрати артефакти збірки
 	$(MVN) -B -ntp clean
 
-contracts: ## Згенерувати клієнтів і класи подій з kite-contracts
-	@echo "kite-contracts ще не підключено до цього сервіса."
-	@echo "Підключення: залежність ua.kite:kite-contracts, закріплена за тегом (5.4, п. 6),"
-	@echo "далі розкоментуй ціль contracts-check нижче — CI почне її проганяти."
+contracts: ## Підтягнути контракти kite-contracts за тегом
+	$(MVN) -B -ntp -q dependency:resolve
+	@echo "ua.kite:kite-contracts:$(CONTRACTS_VERSION) на місці: моделі, інтерфейси API і класи подій."
+	@echo "Схеми лежать у тому самому jar — /kite/contracts/openapi і /kite/contracts/events."
 
-# contracts-check: ## Перевірити сумісність зі схемами kite-contracts
-# 	$(MVN) -B -ntp kite-contracts:verify
+contracts-check: ## Перевірити, що контракти підключені за тегом і копій схем немає
+	@bash scripts/contracts-check.sh "$(CONTRACTS_VERSION)"
 
 rename: ## Перейменувати шаблон у справжній сервіс: make rename NAME=shipment-service
 	@test -n "$(NAME)" || (echo "Вкажи ім'я: make rename NAME=shipment-service"; exit 1)
