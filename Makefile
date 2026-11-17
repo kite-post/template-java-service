@@ -10,7 +10,7 @@ MVN     := $(if $(wildcard ./mvnw),./mvnw,mvn)
 # Тег kite-contracts, за яким закріплений сервіс. Той самий номер лежить у
 # pom.xml властивістю kite-contracts.version; contracts-check стежить, щоб
 # вони не розійшлися.
-CONTRACTS_VERSION ?= 0.1.0
+CONTRACTS_VERSION ?= 0.2.1
 
 .DEFAULT_GOAL := help
 .PHONY: help build lint fmt test test-it verify image run up down clean contracts contracts-check rename
@@ -51,10 +51,8 @@ down: ## Зупинити контейнер
 clean: ## Прибрати артефакти збірки
 	$(MVN) -B -ntp clean
 
-contracts: ## Підтягнути контракти kite-contracts за тегом
-	$(MVN) -B -ntp -q dependency:resolve
-	@echo "ua.kite:kite-contracts:$(CONTRACTS_VERSION) на місці: моделі, інтерфейси API і класи подій."
-	@echo "Схеми лежать у тому самому jar — /kite/contracts/openapi і /kite/contracts/events."
+contracts: ## Підключити kite-contracts за тегом; нова версія — make contracts V=0.2.0
+	@bash scripts/contracts.sh "$(if $(V),$(V),$(CONTRACTS_VERSION))"
 
 contracts-check: ## Перевірити, що контракти підключені за тегом і копій схем немає
 	@bash scripts/contracts-check.sh "$(CONTRACTS_VERSION)"

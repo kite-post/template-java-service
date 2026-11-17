@@ -71,9 +71,16 @@ make run        # запустити з Maven, без контейнера
 ```
 
 ```bash
-make contracts        # підтягнути пакет за тегом
-make contracts-check  # версія закріплена, копій схем немає, залежність резолвиться
+make contracts            # підтягнути пакет за поточним тегом
+make contracts V=0.3.0    # перейти на нову версію: Makefile + pom.xml
+make contracts-check      # версія закріплена, копій схем немає, залежність резолвиться
 ```
+
+Нова версія приходить сама: після релізу `kite-contracts` розсилає подію
+всім репозиторіям із топіком `kite-contracts`, і workflow `contracts-bump`
+відкриває PR з `make contracts V=<версія>`. Версія одна на всі репозиторії.
+Руками те саме: `make contracts V=0.3.0`. Якщо тегу немає, `Makefile` і
+маніфест лишаються як були.
 
 `contracts-check` проганяє спільний CI. Самі схеми лежать у тому самому jar
 (`/kite/contracts/openapi`, `/kite/contracts/events`), тож валідація події не
