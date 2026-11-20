@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.IllegalTransactionStateException;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import ua.kite.contracts.model.KiteEventType;
 import ua.kite.contracts.model.ShipmentStatus;
 import ua.kite.contracts.model.ShipmentStatusChangedData;
 import ua.kite.servicetemplate.KafkaProbe;
@@ -78,6 +80,35 @@ class OutboxIT {
 
         await().atMost(WAIT)
                 .untilAsserted(() -> assertThat(publishedAt(eventId)).isNotNull());
+    }
+
+    @Test
+    void porozhnikhNeobovyazkovykhPolivUPodiiNemaie() throws Exception {
+        UUID shipmentId = TestEvents.newShipmentId();
+        // Клас із kite-contracts, необов'язкові поля (parcelId, locationId тощо) не задані.
+        ShipmentStatusChangedData data = new ShipmentStatusChangedData()
+                .shipmentId(shipmentId)
+                .trackingNumber("KT123456785UA")
+                .statusBefore(ShipmentStatus.IN_TRANSIT)
+                .statusAfter(ShipmentStatus.READY_FOR_PICKUP)
+                .eventCode("KT30")
+                .transition("T7");
+
+        tx.execute(status -> outbox.append(OutgoingEvent.of(KiteEventType.KITE_SHIPMENT_STATUS_CHANGED_V1, data)
+                .subject("KT123456785UA")));
+
+        JsonNode event = mapper.readTree(KafkaProbe.await("shipment.events", shipmentId.toString(), 1, WAIT)
+                .getFirst()
+                .value());
+        // Ключів зі значенням null у data немає зовсім — null порушив би JSON Schema.
+        List<String> nullKeys = new ArrayList<>();
+        event.get("data").fields().forEachRemaining(field -> {
+            if (field.getValue().isNull()) {
+                nullKeys.add(field.getKey());
+            }
+        });
+        assertThat(nullKeys).isEmpty();
+        assertThat(event.get("data").has("parcelId")).isFalse();
     }
 
     @Test

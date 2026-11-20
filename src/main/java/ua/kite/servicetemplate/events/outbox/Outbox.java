@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,7 +54,9 @@ public class Outbox {
             Clock clock,
             @Value("${spring.application.name}") String service) {
         this.jdbc = jdbc;
-        this.mapper = mapper;
+        // Необов'язкових полів, яких немає, у події теж немає: у JSON Schema вони мають тип
+        // (Money — object), і null там порушує контракт.
+        this.mapper = mapper.copy().setDefaultPropertyInclusion(JsonInclude.Include.NON_NULL);
         this.registry = registry;
         this.clock = clock;
         this.source = "/kite/" + service;
