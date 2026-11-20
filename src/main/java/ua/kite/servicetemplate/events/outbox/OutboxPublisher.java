@@ -80,7 +80,11 @@ public class OutboxPublisher {
                 .register(meters);
     }
 
-    @Scheduled(fixedDelayString = "${kite.events.outbox.poll-interval}")
+    // Перший прохід — теж через інтервал, а не в момент старту: так ручні проходи в тестах
+    // (poll-interval=1h) не змагаються за лок зі стартовим тіком.
+    @Scheduled(
+            fixedDelayString = "${kite.events.outbox.poll-interval}",
+            initialDelayString = "${kite.events.outbox.poll-interval}")
     public void tick() {
         try {
             // Повна пачка — у черзі, найімовірніше, є ще: розгрібаємо без паузи.
