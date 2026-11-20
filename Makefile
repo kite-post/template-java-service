@@ -6,6 +6,10 @@ ORG     ?= kite-post
 IMAGE   ?= ghcr.io/$(ORG)/$(SERVICE)
 TAG     ?= dev
 MVN     := $(if $(wildcard ./mvnw),./mvnw,mvn)
+# База сервіса на стенді: shipment-service -> shipment (kite-infra, config/postgres/init).
+DB      ?= $(subst -,,$(patsubst %-service,%,$(SERVICE)))
+# Мережа стенда kite-infra (name: kite у його docker-compose.yml).
+STAND_NETWORK ?= kite_default
 
 # Тег kite-contracts, за яким закріплений сервіс. Той самий номер лежить у
 # pom.xml властивістю kite-contracts.version; contracts-check стежить, щоб
@@ -13,7 +17,7 @@ MVN     := $(if $(wildcard ./mvnw),./mvnw,mvn)
 CONTRACTS_VERSION ?= 0.2.1
 
 .DEFAULT_GOAL := help
-.PHONY: help build lint fmt test test-it verify image run up down clean contracts contracts-check rename
+.PHONY: help build lint fmt test test-it verify image run run-stand up down clean contracts contracts-check rename
 
 help: ## Показати цілі
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -39,11 +43,20 @@ verify: lint test-it ## Усе, що робить CI
 image: ## Зібрати образ локально
 	docker build -t $(IMAGE):$(TAG) .
 
-run: ## Запустити локально з IDE-профілем
-	$(MVN) -B -ntp spring-boot:run
+run: ## Запустити локально: Postgres і Kafka піднімуться контейнерами самі
+	$(MVN) -B -ntp spring-boot:test-run
 
-up: image ## Підняти образ у контейнері на 8080
-	docker run --rm -p 8080:8080 --memory 384m --name $(SERVICE) $(IMAGE):$(TAG)
+run-stand: ## Запустити локально проти стенда kite-infra (localhost:5432, :9092)
+	$(MVN) -B -ntp spring-boot:run \
+		-Dspring-boot.run.arguments="--spring.datasource.url=jdbc:postgresql://localhost:5432/$(DB) --spring.datasource.username=$(DB)"
+
+up: image ## Підняти образ на 8080 у мережі стенда kite-infra (стенд має бути запущений)
+	docker run --rm -p 8080:8080 --memory 384m --name $(SERVICE) --network $(STAND_NETWORK) \
+		-e SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/$(DB) \
+		-e SPRING_DATASOURCE_USERNAME=$(DB) \
+		-e SPRING_DATASOURCE_PASSWORD=kite \
+		-e SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:19092 \
+		$(IMAGE):$(TAG)
 
 down: ## Зупинити контейнер
 	-docker rm -f $(SERVICE)

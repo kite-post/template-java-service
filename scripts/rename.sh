@@ -22,6 +22,7 @@ class_base="$(printf '%s' "$short" | awk -F- '{for (i=1;i<=NF;i++) printf touppe
 echo "Сервіс:  $name"
 echo "Пакет:   ua.kite.$pkg_leaf"
 echo "Клас:    ${class_base}Application"
+echo "База:    $pkg_leaf (як на стенді kite-infra)"
 
 old_dir="src/main/java/ua/kite/servicetemplate"
 new_dir="src/main/java/ua/kite/$pkg_leaf"
@@ -49,6 +50,7 @@ done < <(find src -name 'ServiceTemplate*.java')
 while IFS= read -r f; do
   perl -pi -e "
     s/ua\.kite\.servicetemplate/ua.kite.$pkg_leaf/g;
+    s/\bservicetemplate\b/$pkg_leaf/g;
     s/ServiceTemplateApplication/${class_base}Application/g;
     s/service-template/$name/g;
     s/ServiceTemplate/$class_base/g;
